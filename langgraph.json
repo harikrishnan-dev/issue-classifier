@@ -1,0 +1,7 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "issue_resolver_agent": "./src/agents/issue_resolver/graph.py:graph"
+  },
+  "env": ".env"
+}
