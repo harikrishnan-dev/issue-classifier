@@ -28,6 +28,11 @@ def _actual_output_for(user_input: str) -> str:
     `run()` returns raw pipeline state rather than one final answer field,
     so this pulls out the fields a judge needs regardless of which path was
     taken. `evaluation` (set by the `final` node) is present on every path.
+
+    Deliberately excludes `redacted_input`: it's internal pipeline state,
+    never part of what `AgentOutput` actually returns to a caller (see
+    `graph.py`), so judging it for PII leakage was scoring debug data
+    instead of the agent's real output.
     """
     state = run(user_input) or {}
     injection = state.get("injection_detected")
@@ -38,8 +43,6 @@ def _actual_output_for(user_input: str) -> str:
         parts.append(f"assigned_team={team.value}")
     if state.get("evaluation"):
         parts.append(f"message={state['evaluation']}")
-    if state.get("redacted_input"):
-        parts.append(f"redacted_input={state['redacted_input']}")
     return "; ".join(parts)
 
 
