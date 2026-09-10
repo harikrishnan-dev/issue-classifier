@@ -1,7 +1,7 @@
-"""FastAPI backend for the issue resolver chat frontend (index.html).
+"""FastAPI backend for the issue classifier chat frontend (index.html).
 
-Runs each message through the issue_resolver LangGraph agent via `run()`
-(see src/agents/issue_resolver/graph.py) and maps the resulting state onto
+Runs each message through the issue_classifier LangGraph agent via `run()`
+(see src/agents/issue_classifier/graph.py) and maps the resulting state onto
 the fields the chat page renders.
 
 The graph itself produces the routed team/validity/reasoning (via
@@ -17,10 +17,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from src.agents.issue_resolver.graph import run
-from src.models.issue_resolver_state import AssignedTeam
+from src.agents.issue_classifier.graph import run
+from src.models.issue_classifier_state import AssignedTeam
 
-app = FastAPI(title="Issue Resolver API")
+app = FastAPI(title="Issue Classifier API")
 
 # The chat page can be opened directly as a file:// page or served from a
 # different port, so allow any origin rather than trying to enumerate them.
@@ -34,14 +34,12 @@ app.add_middleware(
 # Human-friendly labels for the team the classifier assigns -- purely
 # cosmetic, doesn't affect routing.
 _TEAM_LABELS = {
-    AssignedTeam.CARGO_MODELS: "Cargo Models",
-    AssignedTeam.FREIGHT: "Freight",
-    AssignedTeam.FLOWS: "Flows",
-    AssignedTeam.COMPLIANCE: "Compliance",
-    AssignedTeam.INSIGHTS: "Insights",
-    AssignedTeam.UI: "UI",
-    AssignedTeam.VOYAGE: "Voyage",
-    AssignedTeam.AIS_INGRESS: "AIS Ingress",
+    AssignedTeam.CARD_LIFECYCLE: "Card Lifecycle",
+    AssignedTeam.CARD_PAYMENTS: "Card Payments",
+    AssignedTeam.TRANSFERS: "Transfers",
+    AssignedTeam.TOPUP_CASH: "Top-Up & Cash",
+    AssignedTeam.IDENTITY_SECURITY: "Identity & Security",
+    AssignedTeam.CURRENCY_FEES: "Currency & Fees",
     AssignedTeam.OTHER: "General / Unclassified",
 }
 
@@ -78,7 +76,7 @@ def _priority_for(text: str, team: AssignedTeam, is_valid: bool) -> str:
         return "low"
     if set(text.lower().split()) & _URGENT_WORDS:
         return "high"
-    return "medium" if team == AssignedTeam.COMPLIANCE else "low"
+    return "medium" if team == AssignedTeam.IDENTITY_SECURITY else "low"
 
 
 @app.post("/analyze", response_model=AnalyzeResponse)

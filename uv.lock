@@ -991,7 +991,7 @@ wheels = [
 ]
 
 [[package]]
-name = "issue-resolver"
+name = "issue-classifier"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
