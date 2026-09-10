@@ -22,17 +22,21 @@ card, from before it can be used to after it stops working for non-payment reaso
 ordering a new/replacement/spare card, physical vs. virtual vs. disposable card requests, \
 activation, delivery tracking and ETAs, cards not yet linked to the account, upcoming expiry, \
 a card being swallowed by an ATM, per-card spending/withdrawal limits, which card networks or \
-currencies are supported, and general card acceptance questions (e.g. "why was my card \
-rejected at this merchant type"). Rule of thumb: the customer doesn't have a *usable* card yet, \
-or is asking about the card object itself rather than a specific payment.
+currencies are supported, and abstract card acceptance questions asked *before* trying to pay \
+(e.g. "would this card work at this type of merchant"). Rule of thumb: the customer doesn't \
+have a *usable* card yet, or is asking about the card object itself rather than something that \
+happened when they actually tried to pay.
 
-- card_payments: Disputes and failures on a specific transaction made *with* a card that the \
-customer already has and was trying to use to pay. Covers declined or pending card payments, \
-payments not showing up or recognised, contactless/virtual card/Apple Pay/Google Pay not \
+- card_payments: Failures on an actual attempt (or repeated attempts) to pay *with* a card that \
+the customer already has and believes should work. Covers declined or pending card payments -- \
+whether a single disputed charge or ongoing declines every time the customer tries to check \
+out -- payments not showing up or recognised, contactless/virtual card/Apple Pay/Google Pay not \
 working at checkout, wrong exchange rate applied to a card purchase, being charged twice for \
 the same purchase, unexpected fees or extra charges on a statement line, and a payment being \
-reversed/refunded back onto the card. Rule of thumb: there is a specific purchase/merchant \
-transaction in dispute.
+reversed/refunded back onto the card. Rule of thumb: the customer actually tried to pay and it \
+didn't work as expected -- even if it keeps happening across multiple merchants, that's still a \
+payments failure, not a card_lifecycle question, as long as the card itself is otherwise issued \
+and active.
 
 - transfers: Sending or receiving money bank-to-bank (not via a card and not a cash top-up), \
 including domestic and international transfers, and direct debits. Covers failed, declined, \
