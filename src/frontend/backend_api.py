@@ -6,19 +6,24 @@ the fields the chat page renders.
 
 The graph itself produces the routed team/validity/reasoning (via
 `assigned_team`, `is_valid`, `evaluation`); sentiment and priority aren't
-modeled by any node yet, so they're derived here with simple keyword
-heuristics until a dedicated node exists for them.
+modeled by any node yet, so they're derived via keyword heuristics in
+`src/frontend/utils.py` until a dedicated node exists for them.
 
 Run with:
     uvicorn src.frontend.backend_api:app --reload --port 8000
 """
 
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 
 from src.agents.issue_classifier.graph import run
+from src.frontend.dto import AnalyzeRequest, AnalyzeResponse, _TEAM_LABELS
+from src.frontend.utils import priority_for, sentiment_for
 from src.models.issue_classifier_state import AssignedTeam
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Issue Classifier API")
 
@@ -31,60 +36,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Human-friendly labels for the team the classifier assigns -- purely
-# cosmetic, doesn't affect routing.
-_TEAM_LABELS = {
-    AssignedTeam.CARD_LIFECYCLE: "Card Lifecycle",
-    AssignedTeam.CARD_PAYMENTS: "Card Payments",
-    AssignedTeam.TRANSFERS: "Transfers",
-    AssignedTeam.TOPUP_CASH: "Top-Up & Cash",
-    AssignedTeam.IDENTITY_SECURITY: "Identity & Security",
-    AssignedTeam.CURRENCY_FEES: "Currency & Fees",
-    AssignedTeam.OTHER: "General / Unclassified",
-}
-
-_NEGATIVE_WORDS = {"angry", "frustrated", "terrible", "awful", "hate", "worst", "broken", "crash", "crashes"}
-_POSITIVE_WORDS = {"great", "love", "thanks", "awesome", "good", "please"}
-_URGENT_WORDS = {"urgent", "asap", "critical", "down", "blocked", "immediately"}
-
-
-class AnalyzeRequest(BaseModel):
-    message: str
-
-
-class AnalyzeResponse(BaseModel):
-    redacted_message: str
-    token_count: int
-    category: str
-    assigned_team: str
-    sentiment: str
-    priority: str
-    reasoning: str
-
-
-def _sentiment_for(text: str) -> str:
-    words = set(text.lower().split())
-    if words & _NEGATIVE_WORDS:
-        return "negative"
-    if words & _POSITIVE_WORDS:
-        return "positive"
-    return "neutral"
-
-
-def _priority_for(text: str, team: AssignedTeam, is_valid: bool) -> str:
-    if not is_valid:
-        return "low"
-    if set(text.lower().split()) & _URGENT_WORDS:
-        return "high"
-    return "medium" if team == AssignedTeam.IDENTITY_SECURITY else "low"
-
 
 @app.post("/analyze", response_model=AnalyzeResponse)
 def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
-    # `graph.invoke()` filters its return value down to whatever
-    # `AgentOutput` declares, so it comes back as `None` unless a node
-    # further along the (currently partial) pipeline sets `evaluation`.
-    state = run(request.message) or {}
+    try:
+        state = run(request.message) or {}
+    except Exception:
+        logger.exception("issue_classifier graph run failed unexpectedly.")
+        state = {"evaluation": "This request could not be processed due to an unexpected error. Please try again."}
 
     team = state.get("assigned_team") or AssignedTeam.OTHER
     is_valid = bool(state.get("is_valid"))
@@ -95,7 +54,7 @@ def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
         token_count=len(text.split()),
         category=team.value,
         assigned_team=_TEAM_LABELS.get(team, "General / Unclassified"),
-        sentiment=_sentiment_for(text),
-        priority=_priority_for(text, team, is_valid),
+        sentiment=sentiment_for(text),
+        priority=priority_for(text, team, is_valid),
         reasoning=state.get("evaluation") or "No reasoning available.",
     )
